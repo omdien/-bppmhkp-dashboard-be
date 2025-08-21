@@ -1,0 +1,31 @@
+{
+  "name": "bppmhkp-dashboard-be",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "nodemon server.js"
+  },
+  "author": "Didin Handiman",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.0.1",
+    "express-session": "^1.18.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "mysql2": "^3.14.3",
+    "sequelize": "^6.37.7",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
