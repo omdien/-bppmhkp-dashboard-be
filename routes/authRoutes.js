@@ -1,15 +1,23 @@
 import express from "express";
-import { login, logout, checkAuth } from "../controllers/authController.js";
+import { login, logout, me } from "../controllers/authController.js";
+import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// POST /api/auth/login
+// ==========================
+// AUTH ROUTES
+// ==========================
+
+// Login → set cookie JWT
 router.post("/login", login);
 
-// POST /api/auth/logout
+// Logout → clear cookie
 router.post("/logout", logout);
 
-// GET /api/auth/me   ← ganti supaya konsisten dengan middleware
-router.get("/me", checkAuth);
+// Check apakah token valid (untuk frontend ping session)
+// router.get("/check-auth", checkAuth);
+
+// Protected: hanya bisa diakses jika sudah login (verifyToken)
+router.get("/me", verifyToken, me);
 
 export default router;
