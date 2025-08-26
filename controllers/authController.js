@@ -2,42 +2,50 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import Tb_user from "../models/tb_user.js";
 import dotenv from "dotenv";
+
 dotenv.config();
 
 const COOKIE_NAME = process.env.COOKIE_NAME || "access_token";
 const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRES = process.env.JWT_EXPIRES || "15m";
 
 // ==========================
-// LOGIN
+// LOGIN (HTTPS + basePath safe)
 // ==========================
 export const login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
+    // Cari user
     const user = await Tb_user.findOne({ where: { USERNAME: username } });
     if (!user) return res.status(401).json({ message: "Username atau password salah" });
 
+    // Cek password
     const match = await bcrypt.compare(password, user.PASSWORD);
     if (!match) return res.status(401).json({ message: "Username atau password salah" });
 
+    // Buat token JWT
     const token = jwt.sign(
       { id: user.USER_ID, role: user.ROLE },
       JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES || "15m" }
+      { expiresIn: JWT_EXPIRES }
     );
 
+    // Set cookie dengan aman untuk HTTPS + cross-origin
     res.cookie(COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 15 * 60 * 1000, // 15 menit
+      httpOnly: true,          // cookie tidak bisa diakses JS
+      secure: true,            // wajib untuk HTTPS
+      sameSite: "None",        // supaya dikirim cross-origin
+      path: "/",               // cookie tersedia di semua route
+      maxAge: 15 * 60 * 1000,  // 15 menit
     });
 
+    // Kirim response sukses
     res.json({
       message: "Login berhasil",
       id: user.USER_ID,
       username: user.USERNAME,
-      role: user.ROLE,
+      role: Number(user.ROLE),
     });
   } catch (error) {
     console.error("LOGIN ERROR:", error);
@@ -49,10 +57,17 @@ export const login = async (req, res) => {
 // LOGOUT
 // ==========================
 export const logout = (req, res) => {
-  res.clearCookie(COOKIE_NAME);
+  res.clearCookie(COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "None",
+  });
   res.json({ message: "Logout berhasil" });
 };
 
+// ==========================
+// ME
+// ==========================
 export const me = async (req, res) => {
   try {
     const token = req.cookies[COOKIE_NAME];
@@ -62,7 +77,7 @@ export const me = async (req, res) => {
 
     const user = await Tb_user.findOne({
       where: { USER_ID: decoded.id },
-      attributes: ["USER_ID", "USERNAME", "ROLE", "EMAIL"], // wajib sesuai field aman
+      attributes: ["USER_ID", "USERNAME", "ROLE", "EMAIL"],
     });
 
     if (!user) {
@@ -73,7 +88,7 @@ export const me = async (req, res) => {
     return res.json({
       id: user.USER_ID,
       username: user.USERNAME,
-      role: Number(user.ROLE), // **pastikan role number**
+      role: Number(user.ROLE),
       email: user.EMAIL,
     });
   } catch (error) {
