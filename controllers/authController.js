@@ -97,7 +97,7 @@ export const me = async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
 
     const user = await Tb_user.findByPk(decoded.id, {
-      attributes: ["USER_ID", "USERNAME", "ROLE", "EMAIL"],
+      attributes: ["USER_ID", "USERNAME", "ROLE", "EMAIL","NAMA","KD_UNIT"],
     });
 
     if (!user) {
@@ -109,7 +109,9 @@ export const me = async (req, res) => {
       id: user.USER_ID,
       username: user.USERNAME,
       role: Number(user.ROLE),
+      nama: user.NAMA,
       email: user.EMAIL,
+      kd_unit: user.KD_UNIT,
     });
   } catch (err) {
     console.error("ME ERROR:", err);
