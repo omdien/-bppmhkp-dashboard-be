@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import Tb_user from "../models/tb_user.js";
 import dotenv from "dotenv";
+import { Tb_user, Tb_r_upt } from "../models/associations.js";
 
 dotenv.config();
 
@@ -91,31 +91,24 @@ export const logout = (req, res) => {
 // ==========================
 export const me = async (req, res) => {
   try {
-    const token = req.cookies[COOKIE_NAME];
-    if (!token) return res.status(401).json({ message: "Unauthorized" });
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    const user = await Tb_user.findByPk(decoded.id, {
-      attributes: ["USER_ID", "USERNAME", "ROLE", "EMAIL","NAMA","KD_UNIT"],
+    const user = await Tb_user.findByPk(req.user.id, {
+      attributes: ["USER_ID", "USERNAME", "ROLE", "NAMA", "EMAIL", "KD_UNIT"],
+      include: [
+        {
+          model: Tb_r_upt,
+          as: "upt",
+          attributes: ["NM_UNIT"],
+        },
+      ],
     });
 
     if (!user) {
-      res.clearCookie(COOKIE_NAME);
-      return res.status(401).json({ message: "User not found" });
+      return res.status(404).json({ msg: "User not found" });
     }
 
-    return res.json({
-      id: user.USER_ID,
-      username: user.USERNAME,
-      role: Number(user.ROLE),
-      nama: user.NAMA,
-      email: user.EMAIL,
-      kd_unit: user.KD_UNIT,
-    });
+    res.json(user);
   } catch (err) {
-    console.error("ME ERROR:", err);
-    res.clearCookie(COOKIE_NAME); // hapus cookie jika token invalid
-    return res.status(401).json({ message: "Invalid or expired token" });
+    console.error("Error in getMe:", err);
+    res.status(500).json({ msg: "Server error" });
   }
 };
