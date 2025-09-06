@@ -10,6 +10,9 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES = process.env.JWT_EXPIRES || "15m";
 const isProd = process.env.NODE_ENV === "production";
 
+// opsional: set domain kalau cookie dipakai lintas subdomain
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || undefined;
+
 // ==========================
 // Helper: convert JWT_EXPIRES ke ms untuk cookie maxAge
 // ==========================
@@ -27,6 +30,16 @@ const getMaxAge = (expires) => {
   }
 };
 
+// konfigurasi cookie, dipakai login & logout (harus identik)
+const cookieOptions = (maxAge) => ({
+  httpOnly: true,
+  secure: isProd,
+  sameSite: isProd ? "None" : "Lax",
+  path: "/",
+  domain: COOKIE_DOMAIN,   // kalau undefined, di-skip (default domain)
+  ...(maxAge !== undefined ? { maxAge } : {}), // maxAge opsional
+});
+
 // ==========================
 // LOGIN
 // ==========================
@@ -34,32 +47,21 @@ export const login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Cari user
     const user = await Tb_user.findOne({ where: { USERNAME: username } });
     if (!user) return res.status(401).json({ message: "Username atau password salah" });
 
-    // Cek password
     const match = await bcrypt.compare(password, user.PASSWORD);
     if (!match) return res.status(401).json({ message: "Username atau password salah" });
 
-    // Buat token JWT
     const token = jwt.sign(
       { id: user.USER_ID, role: user.ROLE },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES }
     );
 
-    // Hitung maxAge cookie dari JWT_EXPIRES
     const maxAge = getMaxAge(JWT_EXPIRES);
 
-    // Set cookie dengan aman sesuai environment
-    res.cookie(COOKIE_NAME, token, {
-      httpOnly: true,                 // cookie tidak bisa diakses JS
-      secure: isProd,                 // true hanya di prod (HTTPS)
-      sameSite: isProd ? "None" : "Lax", // cross-origin di prod, lax di dev
-      path: "/",
-      maxAge,                          // sinkron dengan JWT_EXPIRES
-    });
+    res.cookie(COOKIE_NAME, token, cookieOptions(maxAge));
 
     return res.json({
       message: "Login berhasil",
@@ -77,12 +79,8 @@ export const login = async (req, res) => {
 // LOGOUT
 // ==========================
 export const logout = (req, res) => {
-  res.clearCookie(COOKIE_NAME, {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? "None" : "Lax",
-    path: "/",
-  });
+  // hapus cookie dengan konfigurasi sama, tapi maxAge = 0
+  res.clearCookie(COOKIE_NAME, cookieOptions(0));
   return res.json({ message: "Logout berhasil" });
 };
 
